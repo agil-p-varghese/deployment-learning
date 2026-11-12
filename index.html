@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Chat Interface</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .chat-container { width: 450px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; height: 600px; }
+        .chat-header { background: #007bff; color: white; padding: 15px; font-weight: bold; text-align: center; font-size: 16px; }
+        .chat-box { flex: 1; padding: 15px; overflow-y: auto; border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 12px; background: #fafafa; }
+        .message { padding: 10px 14px; border-radius: 8px; max-width: 80%; line-height: 1.5; word-break: break-word; font-size: 14px; }
+        .user { background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot { background: #e4e6eb; color: #050505; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .input-area { display: flex; padding: 12px; background: #fff; gap: 8px; }
+        input { flex: 1; padding: 10px 14px; border: 1px solid #ccd0d5; border-radius: 20px; outline: none; font-size: 14px; }
+        input:focus { border-color: #007bff; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">AI Chat Assistant</div>
+    <div id="chatBox" class="chat-box">
+        <div class="message bot">Hello! Type a message below to chat with your model.</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKey(event)">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    // Points to your local FastAPI backend server
+    const BACKEND_URL = "http://127.0.0.1:8000/chat";
+
+    async function sendMessage() {
+        const inputField = document.getElementById("userInput");
+        const chatBox = document.getElementById("chatBox");
+        const messageText = inputField.value.trim();
+
+        if (!messageText) return;
+
+        // Append User Message
+        chatBox.innerHTML += `<div class="message user">${escapeHtml(messageText)}</div>`;
+        inputField.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Append Loading Indicator
+        const loadingId = "loading-" + Date.now();
+        chatBox.innerHTML += `<div id="${loadingId}" class="message bot">Thinking...</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+            const response = await fetch(BACKEND_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: messageText })
+            });
+
+            const data = await response.json();
+            document.getElementById(loadingId).remove();
+
+            if (response.ok) {
+                chatBox.innerHTML += `<div class="message bot">${escapeHtml(data.reply)}</div>`;
+            } else {
+                chatBox.innerHTML += `<div class="message bot" style="color: red;">Error: ${escapeHtml(data.detail || "Server error")}</div>`;
+            }
+        } catch (error) {
+            document.getElementById(loadingId).remove();
+            chatBox.innerHTML += `<div class="message bot" style="color: red;">Failed to connect to backend URL. Make sure uvicorn is running!</div>`;
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleKey(event) {
+        if (event.key === "Enter") sendMessage();
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+</script>
+
+</body>
+</html>

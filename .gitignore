@@ -1,0 +1,16 @@
+# Python virtual environments & dependencies
+venv/
+env/
+ENV/
+Lib/
+Scripts/
+Include/
+
+# Environment variables & secrets
+.env
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+CACHEDIR.TAG
